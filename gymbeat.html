@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GymBeat">
+<meta name="theme-color" content="#0e1114">
+<title>GymBeat</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--fg:#14171c;--mut:#6b7280;--acc:#14a64a;--accfg:#fff;--line:#e5e7eb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1114;--card:#181c21;--fg:#f2f4f7;--mut:#8b94a1;--acc:#1ed760;--accfg:#06150b;--line:#262c33}}
+:root[data-theme="dark"]{--bg:#0e1114;--card:#181c21;--fg:#f2f4f7;--mut:#8b94a1;--acc:#1ed760;--accfg:#06150b;--line:#262c33}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,"SF Pro Text","Segoe UI",Roboto,sans-serif;min-height:100vh;user-select:none;-webkit-user-select:none}
+.wrap{max-width:480px;margin:0 auto;padding:16px 16px 32px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+h1{margin:0;font-size:26px;letter-spacing:-.5px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:24px 2px 10px}
+.mut{color:var(--mut);margin:2px 0 0;font-size:14px}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px 16px 16px}
+.ring{position:relative;width:224px;height:224px;margin:0 auto 14px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:10}
+.trk{stroke:var(--line)}
+.arc{stroke:var(--acc);stroke-linecap:round;stroke-dasharray:553;stroke-dashoffset:0;transition:stroke-dashoffset .3s linear}
+.mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#time{font-size:56px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+#state{font-size:14px;color:var(--mut);margin-top:2px}
+.presets{display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.presets button{padding:8px 14px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-size:14px;font-weight:600}
+.presets button.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.main{width:100%;padding:18px;border-radius:18px;background:var(--acc);color:var(--accfg);font-size:18px;font-weight:700}
+.main:active{transform:scale(.98)}
+.main:disabled{opacity:.45}
+.row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.ghost{padding:12px 8px;border-radius:14px;background:var(--bg);border:1px solid var(--line);font-size:14px;font-weight:600}
+header .ghost{padding:8px 12px}
+header .ghost.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g{display:flex;align-items:center;gap:12px;padding:16px 14px;border-radius:18px;background:var(--card);border:1px solid var(--line);text-align:left;font-size:16px}
+.g span{font-size:26px}
+.g.has{border-color:var(--acc)}
+.g:active{transform:scale(.97)}
+.hint{color:var(--mut);font-size:13px;margin:12px 2px 0}
+</style></head>
+<body><div class="wrap">
+<header><div><h1>GymBeat</h1><p class="mut">Musik dan timer rest</p></div><button id="edit" class="ghost">✎ Playlist</button></header>
+<section class="card">
+<div class="ring"><svg viewBox="0 0 200 200"><circle class="trk" cx="100" cy="100" r="88"/><circle id="arc" class="arc" cx="100" cy="100" r="88"/></svg>
+<div class="mid"><div id="time">1:30</div><div id="state"></div></div></div>
+<div class="presets" id="presets"></div>
+<button id="main" class="main">Selesai set · mulai rest</button>
+<div class="row"><button id="add" class="ghost">+15 dtk</button><button id="skip" class="ghost">Lewati</button><button id="reset" class="ghost">Reset set</button></div>
+</section>
+<h2>Musik</h2>
+<div class="grid" id="grid"></div>
+<p class="hint" id="hint"></p>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let rest=store.get('rest',90),links=store.get('links',{}),sets=0,endAt=0,total=rest,fin=false,edit=false,ctx=null,lock=null;
+const G=[["🔥","Hip-Hop","hip hop workout"],["⚡","EDM","edm workout"],["🎸","Rock","rock workout"],["🤘","Metal","metal gym"],["🐺","Phonk","phonk gym"],["🎤","Pop","pop workout"],["🏃","Cardio","cardio running"],["🧘","Cooldown","chill cooldown"]];
+const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+const running=()=>endAt>0;
+function draw(){
+  const left=running()?Math.max(0,Math.ceil((endAt-Date.now())/1000)):rest;
+  $('#time').textContent=fmt(left);
+  $('#arc').style.strokeDashoffset=running()?553*(1-left/total):0;
+  $('#state').textContent=running()?'Istirahat · set '+sets+' selesai':fin?'Waktunya set '+(sets+1)+'!':'Set '+(sets+1)+' · siap';
+  $('#main').disabled=running();
+  $('#presets').innerHTML='';
+  [45,60,90,120,180].forEach(v=>{const b=document.createElement('button');b.textContent=fmt(v);b.className=v===rest?'on':'';b.onclick=()=>{rest=v;store.set('rest',v);if(!running())total=v;draw()};$('#presets').append(b)});
+}
+function beep(){try{ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();[0,.25,.5].forEach((t,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=i==2?1000:760;g.gain.value=.3;o.connect(g);g.connect(ctx.destination);o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+.18)})}catch(e){}}
+function wake(){try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>lock=l).catch(()=>{})}catch(e){}}
+function unwake(){try{lock&&lock.release();lock=null}catch(e){}}
+function finish(sound){endAt=0;fin=true;unwake();if(sound){beep();try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}draw()}
+$('#main').onclick=()=>{
+  try{ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();ctx.resume()}catch(e){}
+  sets++;total=rest;endAt=Date.now()+rest*1000;fin=false;wake();draw();
+};
+$('#add').onclick=()=>{if(running()){endAt+=15000;total+=15}else{rest+=15;store.set('rest',rest);total=rest}draw()};
+$('#skip').onclick=()=>{if(running())finish(false)};
+$('#reset').onclick=()=>{sets=0;endAt=0;fin=false;unwake();draw()};
+setInterval(()=>{if(running()){if(Date.now()>=endAt)finish(true);else draw()}},250);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(running()){if(Date.now()>=endAt)finish(true);else wake()}draw()}});
+function toUri(u){const m=u.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|artist|track|show)\/([A-Za-z0-9]+)/);return m?'spotify:'+m[1]+':'+m[2]:null}
+function grid(){
+  $('#grid').innerHTML='';
+  G.forEach(([e,n,q])=>{const b=document.createElement('button');b.className='g'+(links[n]?' has':'');b.innerHTML='<span>'+e+'</span><b>'+n+'</b>';b.onclick=()=>pick(n,q);$('#grid').append(b)});
+  $('#hint').textContent=edit?'Mode edit: ketuk genre untuk menempelkan link playlist Spotify. Kosongkan untuk kembali ke pencarian.':'Ketuk genre untuk membuka Spotify. Pakai ✎ Playlist untuk mengaitkan playlist favoritmu (bingkai hijau).';
+}
+function pick(n,q){
+  if(edit){
+    const v=prompt('Tempel link Spotify untuk '+n,links[n]||'');
+    if(v===null)return;
+    if(!v.trim())delete links[n];else if(toUri(v))links[n]=v.trim();else{alert('Link Spotify tidak dikenali');return}
+    store.set('links',links);grid();return;
+  }
+  const u=links[n]?toUri(links[n]):null;
+  location.href=u||'spotify:search:'+encodeURIComponent(q);
+}
+$('#edit').onclick=()=>{edit=!edit;$('#edit').classList.toggle('on',edit);grid()};
+grid();draw();
+</script></body></html>

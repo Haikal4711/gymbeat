@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="GymBeat">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>GymBeat</title>
+<style>
+:root{--bg:#e7eaee;--sf:#fff;--ink:#12151a;--mu:#66707c;--ln:#cfd5dc;--pl:#2446f2;--pd:#1a2fb8;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root{--bg:#101318;--sf:#1a1f27;--ink:#f1f3f5;--mu:#8b95a1;--ln:#2b323c;--pl:#4766ff;--pd:#2236a8}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{margin:0 auto;max-width:520px;color:var(--ink);font:16px/1.4 ui-sans-serif,-apple-system,"SF Pro Text",system-ui,sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom))}
+h1{font-size:28px;font-weight:800;letter-spacing:-.03em;margin:6px 0 4px}
+h2{font-size:15px;font-weight:700;margin:26px 0 10px}
+.mu{color:var(--mu);font-size:14px}
+button,input{font:inherit;color:inherit}
+button{border:1px solid var(--ln);background:var(--sf);border-radius:12px;min-height:48px;padding:0 14px;font-weight:600}
+button:active{transform:scale(.97)}
+input[type=text]{width:100%;min-height:48px;border:1px solid var(--ln);background:var(--sf);border-radius:12px;padding:0 14px}
+.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center}
+.row>input{flex:1}
+.moods{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mood{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px;min-height:84px;font-size:17px;border-radius:6px 18px 6px 18px}
+.mood i{font-style:normal;font-size:24px}
+.mood.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chk{display:flex;gap:10px;align-items:center;margin:12px 2px 0;font-size:15px}
+.chk input{width:22px;height:22px;accent-color:var(--pl)}
+.np{display:flex;gap:12px;align-items:center;background:var(--sf);border:1px solid var(--ln);border-radius:18px 6px 18px 6px;padding:12px}
+.np img{width:64px;height:64px;border-radius:8px;background:var(--ln);object-fit:cover;flex:none}
+.np div{min-width:0}
+.np b,.np .mu{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctl{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.ctl button{font-size:22px}
+.slab{position:relative;overflow:hidden;background:var(--pd);color:#fff;border-radius:6px 22px 6px 22px;padding:22px 18px 20px;text-align:center}
+.fill{position:absolute;inset:0 auto 0 0;width:100%;background:var(--pl);transition:width .3s linear}
+.slab>*:not(.fill){position:relative}
+#tm{font-size:88px;font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.slab .mu{color:rgba(255,255,255,.75)}
+.stp{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:10px;font-weight:700;font-size:18px}
+.stp button{width:44px;min-height:44px;padding:0;background:rgba(255,255,255,.16);border:0;color:#fff;font-size:22px}
+.chips{display:flex;gap:6px;margin:12px 0}
+.chips button{flex:1;padding:0;min-height:44px}
+.chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+#rb{width:100%;min-height:58px;font-size:18px}
+.foot{margin-top:28px;text-align:center}
+.foot a{color:var(--mu);font-size:14px;text-decoration:underline;margin:0 8px}
+code{display:block;word-break:break-all;background:var(--bg);border-radius:8px;padding:10px;margin:8px 0;font-size:13px}
+.box{background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:16px}
+#toast{position:fixed;left:16px;right:16px;bottom:max(18px,env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);border-radius:12px;padding:14px;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<h1>GymBeat</h1>
+<div class="mu">Musik sesuai mood, timer istirahat antar set.</div>
+
+<section id="setup" hidden>
+  <h2>Hubungkan Spotify</h2>
+  <div class="box">
+    <p style="margin-top:0">Buat app di <b>developer.spotify.com/dashboard</b>, lalu isi Redirect URI dengan alamat ini:</p>
+    <code id="ru"></code>
+    <button id="cp">Salin alamat</button>
+    <p>Tempel Client ID dari app tersebut:</p>
+    <input type="text" id="cid" placeholder="Client ID" autocapitalize="off" autocorrect="off">
+    <button id="go" class="pri" style="width:100%;margin-top:10px">Hubungkan Spotify</button>
+  </div>
+</section>
+
+<section id="main" hidden>
+  <h2>Pilih mood</h2>
+  <div class="moods" id="moods"></div>
+  <div class="row" style="margin-top:8px">
+    <input type="text" id="cg" placeholder="Genre lain, mis. k-pop" autocapitalize="off">
+    <button id="cgb">Putar</button>
+  </div>
+  <label class="chk"><input type="checkbox" id="pop" checked> Hanya lagu yang populer</label>
+
+  <h2>Sedang diputar</h2>
+  <div class="np"><img id="art" alt=""><div><b id="tt">Belum ada lagu</b><span class="mu" id="ar">Pilih mood di atas</span></div></div>
+  <div class="ctl">
+    <button id="bd" aria-label="Tidak cocok, lewati">👎</button>
+    <button id="pp" aria-label="Putar atau jeda">▶</button>
+    <button id="nx" aria-label="Lagu berikutnya">⏭</button>
+    <button id="lk" aria-label="Suka artis ini">👍</button>
+  </div>
+  <div class="mu" style="margin-top:8px">👎 lewati dan jangan putar artis ini lagi · 👍 prioritaskan artis ini · <a href="spotify://" style="color:inherit">Buka Spotify</a></div>
+
+  <h2>Istirahat antar set</h2>
+  <div class="slab">
+    <div class="fill" id="fill"></div>
+    <div id="tm">1:30</div>
+    <div class="mu">sisa istirahat</div>
+    <div class="stp"><button id="sm" aria-label="Kurangi set">−</button><span id="sn">Set 1</span><button id="sp" aria-label="Tambah set">+</button></div>
+  </div>
+  <div class="chips" id="chips"></div>
+  <button id="rb" class="pri">Selesai set, mulai istirahat</button>
+  <label class="chk"><input type="checkbox" id="pz"> Jeda musik saat istirahat</label>
+
+  <div class="foot"><a id="out">Ganti Client ID / keluar</a></div>
+</section>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s),LS=localStorage,sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const REDIRECT=location.origin+location.pathname;
+const SCOPES='user-modify-playback-state user-read-playback-state user-read-currently-playing';
+let S=null,playing=false,ac=null,wl=null;
+
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),3500)}
+
+/* ---------- Login Spotify (PKCE, tanpa server) ---------- */
+const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+async function login(){
+  const v=b64(crypto.getRandomValues(new Uint8Array(48)));LS.ver=v;
+  const c=b64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)));
+  location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({client_id:LS.cid,response_type:'code',redirect_uri:REDIRECT,scope:SCOPES,code_challenge_method:'S256',code_challenge:c});
+}
+async function tok(body){
+  const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:LS.cid,...body})});
+  const j=await r.json();if(!j.access_token)throw j;
+  LS.at=j.access_token;LS.exp=Date.now()+j.expires_in*1000-60000;if(j.refresh_token)LS.rt=j.refresh_token;
+}
+async function token(){if(!(Date.now()<+LS.exp))await tok({grant_type:'refresh_token',refresh_token:LS.rt});return LS.at}
+async function api(path,method='GET',body){
+  const r=await fetch('https://api.spotify.com/v1'+path,{method,headers:{Authorization:'Bearer '+await token(),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+  if(r.status===204||r.status===202)return {};
+  const t=await r.text();let j={};try{j=JSON.parse(t)}catch{}
+  if(!r.ok)throw {status:r.status,msg:j.error?.message||t};
+  return j;
+}
+const act=async f=>{try{await f()}catch(e){toast(e.status===404?'Buka app Spotify dulu, putar lagu sebentar, lalu kembali':e.status===403?'Ditolak Spotify (cek Premium & izin)':(e.msg||'Gagal, coba lagi'))}};
+
+/* ---------- Mood & pemilihan lagu ---------- */
+const MOODS=[
+ {n:'Gym garang',e:'💪',q:['genre:"hip hop"','genre:"phonk"','genre:"trap"']},
+ {n:'Cardio',e:'🏃',q:['genre:"edm"','genre:"dance pop"','genre:"house"']},
+ {n:'Rock & metal',e:'🤘',q:['genre:"hard rock"','genre:"alternative metal"','genre:"rock"']},
+ {n:'Pemanasan',e:'🔥',q:['genre:"pop"','genre:"r&b"','genre:"pop rap"']},
+ {n:'Fokus',e:'🎧',q:['genre:"lo-fi"','genre:"chillhop"','genre:"study beats"']},
+ {n:'Indonesia',e:'🇮🇩',q:['genre:"indonesian pop"','genre:"indonesian rock"','genre:"indonesian hip hop"']}
+];
+const tr=i=>({u:i.uri,n:i.name,a:i.artists.map(x=>x.name).join(', '),ai:i.artists[0].id,y:+(i.album?.release_date||'2015').slice(0,4),p:i.popularity,img:i.album?.images?.[1]?.url||i.album?.images?.[0]?.url,q:0});
+
+async function build(m){
+  const seen=new Set(),out=[],jobs=[];let err=null;
+  m.q.forEach((q,qi)=>{
+    [0,10,20,30,40,50].sort(()=>Math.random()-.5).slice(0,4).forEach(o=>jobs.push(
+      api(`/search?type=track&limit=10&market=ID&offset=${o}&q=${encodeURIComponent(q)}`).then(r=>r.tracks.items.forEach(i=>{
+        if(!i||!i.artists?.length)return;const k=i.name.toLowerCase()+i.artists[0].id;if(seen.has(k))return;seen.add(k);
+        const t=tr(i);t.q=qi;out.push(t);
+      })).catch(e=>{err=e})));
+  });
+  await Promise.all(jobs);
+  if(!out.length&&err)throw err;
+  const f=$('#pop').checked?out.filter(t=>t.p==null||t.p>=50):out;
+  return f.length>=12?f:out;
+}
+
+/* Lagu berikutnya dipilih berdasarkan lagu terakhir di antrean:
+   subgenre sama, tahun rilis berdekatan, populer, artis yang kamu 👍,
+   dan tidak mengulang artis yang sama berdekatan. */
+function pick(){
+  const last=S.chain.at(-1),rec=new Set(S.chain.slice(-5).map(t=>t.ai));
+  const sc=S.pool.filter(t=>!S.used.has(t.u)&&!S.ban.has(t.ai)&&t.ai!==last?.ai).map(t=>({t,s:
+    (t.p??50)/50+(last?1-Math.min(Math.abs(t.y-last.y),8)/8:0)+(last&&t.q===last.q?.8:0)+(S.like.has(t.ai)?1.5:0)-(rec.has(t.ai)?1:0)+Math.random()*.7}));
+  sc.sort((a,b)=>b.s-a.s);return sc[0]?.t;
+}
+
+async function play(uri){
+  try{await api('/me/player/play','PUT',{uris:[uri]})}
+  catch(e){
+    if(e.status!==404)throw e;
+    const d=(await api('/me/player/devices')).devices||[];
+    const dv=d.find(x=>x.type==='Smartphone')||d[0];
+    if(!dv)throw {status:404};
+    await api('/me/player','PUT',{device_ids:[dv.id],play:false});await sleep(700);
+    await api('/me/player/play?device_id='+dv.id,'PUT',{uris:[uri]});
+  }
+}
+
+async function fill(){
+  if(!S||S.fl)return;S.fl=1;
+  try{while(S.q.length<3){const t=pick();if(!t)break;S.used.add(t.u);
+    await api('/me/player/queue?uri='+encodeURIComponent(t.u),'POST');S.q.push(t);S.chain.push(t)}}catch(e){}
+  S.fl=0;
+}
+
+async function start(m){
+  document.querySelectorAll('.mood').forEach(b=>b.classList.toggle('on',b.dataset.n===m.n));
+  toast('Mencari lagu '+m.n+'…');
+  await act(async()=>{
+    const pool=await build(m);
+    if(pool.length<5){toast('Lagu tidak ditemukan, coba genre lain');return}
+    S={m,pool,used:new Set(),chain:[],q:[],ban:new Set(),like:new Set(),fl:0};
+    const f=pick();S.used.add(f.u);S.chain.push(f);S.cur=f.u;
+    await play(f.u);show(f.n,f.a,f.img);playing=true;$('#pp').textContent='⏸';
+    await fill();toast('Memutar: '+m.n);
+  });
+}
+const cur=()=>S&&S.chain.find(t=>t.u===S.cur);
+function show(n,a,img){$('#tt').textContent=n;$('#ar').textContent=a;if(img)$('#art').src=img}
+
+async function sync(){
+  let p;try{p=await api('/me/player')}catch(e){return}
+  const i=p&&p.item;if(!i)return;
+  playing=p.is_playing;$('#pp').textContent=playing?'⏸':'▶';
+  if(S&&i.uri!==S.cur){S.cur=i.uri;const k=S.q.findIndex(t=>t.u===i.uri);if(k>=0)S.q=S.q.slice(k+1);fill()}
+  show(i.name,i.artists.map(x=>x.name).join(', '),i.album.images[1]?.url||i.album.images[0]?.url);
+}
+
+$('#nx').onclick=()=>act(()=>api('/me/player/next','POST'));
+$('#pp').onclick=()=>act(async()=>{await api('/me/player/'+(playing?'pause':'play'),'PUT');playing=!playing;$('#pp').textContent=playing?'⏸':'▶'});
+$('#lk').onclick=()=>{const t=cur();if(t){S.like.add(t.ai);toast('Artis ini diprioritaskan')}else toast('Mulai dari pilih mood dulu')};
+$('#bd').onclick=()=>act(async()=>{const t=cur();if(t)S.ban.add(t.ai);await api('/me/player/next','POST')});
+$('#cgb').onclick=()=>{const g=$('#cg').value.replace(/"/g,'').trim();if(g)start({n:g,e:'🎵',q:[`genre:"${g}"`,g]})};
+
+/* ---------- Timer istirahat ---------- */
+const T={dur:90,tot:90,set:1,end:0,run:false,id:0};
+const fmt=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+function draw(){
+  const rem=T.run?(T.end-Date.now())/1000:T.dur;
+  $('#tm').textContent=fmt(rem);$('#fill').style.width=(T.run?Math.max(0,rem/T.tot)*100:100)+'%';$('#sn').textContent='Set '+T.set;
+}
+function beep(){
+  try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();
+    for(let i=0;i<3;i++){const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+i*.35;
+      o.frequency.value=i===2?1320:880;o.connect(g);g.connect(ac.destination);
+      g.gain.setValueAtTime(.35,t);g.gain.exponentialRampToValueAtTime(.001,t+.25);o.start(t);o.stop(t+.3)}}catch{}
+  navigator.vibrate?.([250,120,250]);
+}
+async function rest(){
+  if(T.run){end(true);return}
+  T.run=true;T.tot=T.dur;T.end=Date.now()+T.dur*1000;$('#rb').textContent='Lewati istirahat';
+  try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();ac.resume?.()}catch{}
+  try{wl=await navigator.wakeLock?.request('screen')}catch{}
+  if($('#pz').checked)api('/me/player/pause','PUT').then(()=>{playing=false;$('#pp').textContent='▶'}).catch(()=>{});
+  clearInterval(T.id);T.id=setInterval(()=>Date.now()>=T.end?end(false):draw(),250);draw();
+}
+function end(skipped){
+  clearInterval(T.id);T.run=false;wl?.release?.();wl=null;T.set++;
+  $('#rb').textContent='Selesai set, mulai istirahat';
+  if(!skipped)beep();
+  if($('#pz').checked)api('/me/player/play','PUT').then(()=>{playing=true;$('#pp').textContent='⏸'}).catch(()=>{});
+  draw();toast('Lanjut set '+T.set);
+}
+[30,45,60,90,120,180].forEach(s=>{
+  const b=document.createElement('button');b.textContent=s<60?s+'d':(s/60)+'m'+(s%60?s%60:'');
+  b.textContent=s<60?s+'d':Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  b.dataset.s=s;b.onclick=()=>{if(T.run)return;T.dur=s;mark();draw()};$('#chips').append(b);
+});
+function mark(){document.querySelectorAll('#chips button').forEach(b=>b.classList.toggle('on',+b.dataset.s===T.dur))}
+$('#rb').onclick=rest;
+$('#sm').onclick=()=>{T.set=Math.max(1,T.set-1);draw()};
+$('#sp').onclick=()=>{T.set++;draw()};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(T.run&&Date.now()>=T.end)end(false);else if(T.run&&!wl)navigator.wakeLock?.request('screen').then(w=>wl=w).catch(()=>{});sync()}});
+
+/* ---------- Awal ---------- */
+MOODS.forEach(m=>{const b=document.createElement('button');b.className='mood';b.dataset.n=m.n;b.innerHTML=`<i>${m.e}</i>${m.n}`;b.onclick=()=>start(m);$('#moods').append(b)});
+$('#ru').textContent=REDIRECT;
+$('#cp').onclick=()=>navigator.clipboard?.writeText(REDIRECT).then(()=>toast('Alamat disalin'));
+$('#go').onclick=()=>{const c=$('#cid').value.trim();if(!c)return toast('Isi Client ID dulu');LS.cid=c;login()};
+$('#out').onclick=()=>{if(confirm('Keluar dan hapus Client ID dari perangkat ini?')){LS.clear();location.reload()}};
+
+(async()=>{
+  const p=new URLSearchParams(location.search);
+  if(p.get('code')){try{await tok({grant_type:'authorization_code',code:p.get('code'),redirect_uri:REDIRECT,code_verifier:LS.ver})}catch(e){toast('Login gagal, coba hubungkan lagi')}}
+  else if(p.get('error'))toast('Izin Spotify ditolak');
+  if(p.toString())history.replaceState({},'',REDIRECT);
+  const ok=LS.cid&&LS.rt;
+  $('#setup').hidden=!!ok;$('#main').hidden=!ok;$('#cid').value=LS.cid||'';
+  mark();draw();
+  if(ok){sync();setInterval(()=>{if(!document.hidden)sync()},4000)}
+})();
+</script>
+</body>
+</html>
